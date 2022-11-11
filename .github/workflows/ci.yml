@@ -1,0 +1,19 @@
+on: [push]
+
+name: CI
+
+jobs:
+  build_and_test:
+    name: lineup-CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
