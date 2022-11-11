@@ -80,13 +80,13 @@ impl FormatBuilder {
     }
 }
 
-pub fn write<In, Out>(
+pub fn write<'i, In, Out>(
     mut istream: In,
     mut ostream: Out,
     format: Format,
 ) -> Result<(), std::io::Error>
 where
-    In: Iterator<Item = String>,
+    In: Iterator<Item = &'i str>,
     Out: std::io::Write,
 {
     enum Separator {
@@ -115,11 +115,16 @@ where
                                                                   // chars.count as we write in
                                                                   // case of Anchor::Left
         let pad = String::from_iter(std::iter::repeat(format.item_pad).take(pad_count));
-        let out = match format.item_anchor {
-            Anchor::Left => input + pad.as_str(),
-            Anchor::Right => pad + input.as_str(),
+        match format.item_anchor {
+            Anchor::Left => {
+        ostream.write(input.as_bytes())?;
+        ostream.write(pad.as_bytes())?;
+            },
+            Anchor::Right => {
+        ostream.write(pad.as_bytes())?;
+        ostream.write(input.as_bytes())?;
+            },
         };
-        ostream.write(out.as_bytes())?;
 
         // decide on separator for next input
         (separator, items_in_line) = if format.items_per_line > 0 {
@@ -141,9 +146,9 @@ mod tests {
 
     #[test]
     fn test1() {
-        let input = ["001".to_string(), "01".to_string(), "1".to_string()];
+        let input = ["001", "01", "1"];
         // let expected = "001_|01__|1___*".to_string();
-        let expected = "_001|__01;___1*".to_string();
+        let expected = "_001|__01;___1*";
         let mut output = [0u8; 15];
         output[14] = b'*';
         let format = FormatBuilder::new()
