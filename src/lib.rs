@@ -1,87 +1,91 @@
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[macro_use]
+extern crate derive_builder;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Anchor type for items when padding is needed
 pub enum Anchor {
+    /// Anchor items to the right
     Right,
+    /// Anchor items to the left
     Left,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Builder)]
+#[builder(derive(Debug))]
+/// Output format
+///
+/// conveniently FormatBuilder struct can be used for construction:
+///
+/// # Examples
+///
+/// ```
+/// let format = lineup::FormatBuilder::new()
+///     .item_span(4)
+///     .item_anchor(lineup::Anchor::Right)
+///     .item_separator("|".to_string())
+///     .line_separator(";".to_string())
+///     .items_per_line(2)
+///     .item_pad('_')
+///     .build()
+///     .unwrap();
+/// ```
+///
 pub struct Format {
-    item_span: usize,
-    item_pad: char,
-    item_anchor: Anchor,
-    items_per_line: usize, // 0 means no line separaion
-    item_separator: String,
-    line_separator: String,
-}
-
-impl Format {
-    pub fn new(
-        item_span: usize,
-        item_pad: char,
-        item_anchor: Anchor,
-        items_per_line: usize,
-        item_separator: String,
-        line_separator: String,
-    ) -> Self {
-        Self {
-            item_span,
-            item_pad,
-            item_anchor,
-            items_per_line,
-            item_separator,
-            line_separator,
-        }
-    }
-}
-
-pub struct FormatBuilder {
-    proto: Format,
+    #[builder(default = "8")]
+    /// Max characters an item would need; shorter represantions would be padded with [item_pad]
+    ///
+    /// [item_pad]: crate::Format::item_pad
+    pub item_span: usize,
+    #[builder(default = "' '")]
+    /// Pad character to use for items whose length is less than [item_span]
+    ///
+    /// [item_span]: crate::Format::item_span
+    pub item_pad: char,
+    #[builder(default = "Anchor::Left")]
+    /// Anchor type for items when padding is needed
+    pub item_anchor: Anchor,
+    #[builder(default = "0")]
+    /// Number of items per line; if 0 all items will be put on a single line
+    pub items_per_line: usize,
+    #[builder(default = "String::from(\" \")")]
+    /// Separator for items within a line
+    pub item_separator: String,
+    #[builder(default = "String::from(\"\n\")")]
+    /// Separator between lines
+    pub line_separator: String,
 }
 
 impl FormatBuilder {
     pub fn new() -> Self {
-        Self {
-            proto: Format::new(
-                8,
-                ' ',
-                Anchor::Left,
-                8,
-                "\n".to_string(),
-                "".to_string(),
-            ),
-        }
-    }
-    pub fn build(&self) -> Format {
-        self.proto.clone()
-    }
-    pub fn span(&mut self, span: usize) -> &mut Self {
-        self.proto.item_span = span;
-        self
-    }
-    pub fn anchor(&mut self, anchor: Anchor) -> &mut Self {
-        self.proto.item_anchor = anchor;
-        self
-    }
-    pub fn padding(&mut self, pad: char) -> &mut Self {
-        self.proto.item_pad = pad;
-        self
-    }
-    pub fn item_separator(&mut self, sep: String) -> &mut Self {
-        self.proto.item_separator = sep;
-        self
-    }
-    pub fn line_separator(&mut self, sep: String) -> &mut Self {
-        self.proto.line_separator = sep;
-        self
-    }
-    pub fn items_per_line(&mut self, n: usize) -> &mut Self {
-        self.proto.items_per_line = n;
-        self
+        Self::default()
     }
 }
 
+/// Write input items as per provided format
+///
+/// # Examples
+///
+/// ```
+/// let input = ["😊😊", "👶", "💼💼💼"];
+/// let format = lineup::FormatBuilder::new()
+///     .item_span(4)
+///     .item_anchor(lineup::Anchor::Right)
+///     .item_separator("🖖".to_string())
+///     .line_separator("🔩\n".to_string())
+///     .items_per_line(2)
+///     .item_pad('👉')
+///     .build()
+///     .unwrap();
+/// let expected = "👉👉😊😊🖖👉👉👉👶🔩\n👉💼💼💼";
+/// let mut output = vec![0u8; 100 ];
+/// lineup::write(input.into_iter(), output.as_mut_slice(), format).unwrap();
+/// let eof = output.iter().position(|x| *x == 0u8).unwrap_or(output.len());
+/// let output = output.split_at(eof).0;
+/// assert_eq!(String::from_utf8(output.to_vec()).unwrap(), expected);
+/// ```
+///
 pub fn write<'i, In, Out>(
-    mut istream: In,
+    istream: In,
     mut ostream: Out,
     format: Format,
 ) -> Result<(), std::io::Error>
@@ -98,15 +102,15 @@ where
     let mut separator = Separator::None;
     let item_separator = format.item_separator.as_bytes();
     let line_separator = format.line_separator.as_bytes();
-    while let Some(input) = istream.next() {
+    for input in istream {
         // emit separator from previous input
         match separator {
             Separator::None => {}
             Separator::Item => {
-                ostream.write(item_separator)?;
+                ostream.write_all(item_separator)?;
             }
             Separator::Line => {
-                ostream.write(line_separator)?;
+                ostream.write_all(line_separator)?;
             }
         }
 
@@ -117,13 +121,13 @@ where
         let pad = String::from_iter(std::iter::repeat(format.item_pad).take(pad_count));
         match format.item_anchor {
             Anchor::Left => {
-        ostream.write(input.as_bytes())?;
-        ostream.write(pad.as_bytes())?;
-            },
+                ostream.write_all(input.as_bytes())?;
+                ostream.write_all(pad.as_bytes())?;
+            }
             Anchor::Right => {
-        ostream.write(pad.as_bytes())?;
-        ostream.write(input.as_bytes())?;
-            },
+                ostream.write_all(pad.as_bytes())?;
+                ostream.write_all(input.as_bytes())?;
+            }
         };
 
         // decide on separator for next input
@@ -145,21 +149,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test1() {
+    fn test() {
         let input = ["001", "01", "1"];
-        // let expected = "001_|01__|1___*".to_string();
         let expected = "_001|__01;___1*";
         let mut output = [0u8; 15];
         output[14] = b'*';
         let format = FormatBuilder::new()
-            .span(4)
-            .anchor(Anchor::Right)
+            .item_span(4)
+            .item_anchor(Anchor::Right)
             .item_separator("|".to_string())
             .line_separator(";".to_string())
             .items_per_line(2)
-            .padding('_')
-            .build();
+            .item_pad('_')
+            .build()
+            .unwrap();
         write(input.into_iter(), output.as_mut_slice(), format).unwrap();
+        assert_eq!(String::from_utf8(output.to_vec()).unwrap(), expected);
+    }
+
+    #[test]
+    fn example() {
+        let input = ["😊😊", "👶", "💼💼💼"];
+        let format = FormatBuilder::new()
+            .item_span(4)
+            .item_anchor(Anchor::Right)
+            .item_separator("🖖".to_string())
+            .line_separator("🔩\n".to_string())
+            .items_per_line(2)
+            .item_pad('👉')
+            .build()
+            .unwrap();
+        let expected = "👉👉😊😊🖖👉👉👉👶🔩\n👉💼💼💼";
+        let mut output = vec![0u8; 100];
+        write(input.into_iter(), output.as_mut_slice(), format).unwrap();
+        let eof = output
+            .iter()
+            .position(|x| *x == 0u8)
+            .unwrap_or(output.len());
+        let output = output.split_at(eof).0;
         assert_eq!(String::from_utf8(output.to_vec()).unwrap(), expected);
     }
 }
