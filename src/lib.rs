@@ -31,10 +31,13 @@ pub enum Anchor {
 /// ```
 ///
 pub struct Format {
-    #[builder(default = "8")]
+    #[builder(default = "0")]
     /// Max characters an item would need; shorter represantions would be padded with [item_pad]
+    /// and anchored according to [item_anchor];
+    /// if 0, items will not be padded so [item_pad] and [item_anchor] are not used
     ///
     /// [item_pad]: crate::Format::item_pad
+    /// [item_anchor]: crate::Format::item_anchor
     pub item_span: usize,
     #[builder(default = "' '")]
     /// Pad character to use for items whose length is less than [item_span]
@@ -42,10 +45,12 @@ pub struct Format {
     /// [item_span]: crate::Format::item_span
     pub item_pad: char,
     #[builder(default = "Anchor::Left")]
-    /// Anchor type for items when padding is needed
+    /// Anchor type for items when padding is needed (see [item_span])
+    ///
+    /// [item_span]: crate::Format::item_span
     pub item_anchor: Anchor,
     #[builder(default = "0")]
-    /// Number of items per line; if 0 all items will be put on a single line
+    /// Number of items per line; if 0, all items will be put on a single line
     pub items_per_line: usize,
     #[builder(default = "String::from(\" \")")]
     /// Separator for items within a line
@@ -115,20 +120,23 @@ where
         }
 
         // write (padded) input
-        let pad_count = format.item_span - input.chars().count(); // it'd be good to get
-                                                                  // chars.count as we write in
-                                                                  // case of Anchor::Left
-        let pad = String::from_iter(std::iter::repeat(format.item_pad).take(pad_count));
-        match format.item_anchor {
-            Anchor::Left => {
-                ostream.write_all(input.as_bytes())?;
-                ostream.write_all(pad.as_bytes())?;
-            }
-            Anchor::Right => {
-                ostream.write_all(pad.as_bytes())?;
-                ostream.write_all(input.as_bytes())?;
-            }
-        };
+        let input_chars = input.chars().count();
+        if input_chars < format.item_span {
+            let pad_count = format.item_span - input_chars;
+            let pad = String::from_iter(std::iter::repeat(format.item_pad).take(pad_count));
+            match format.item_anchor {
+                Anchor::Left => {
+                    ostream.write_all(input.as_bytes())?;
+                    ostream.write_all(pad.as_bytes())?;
+                }
+                Anchor::Right => {
+                    ostream.write_all(pad.as_bytes())?;
+                    ostream.write_all(input.as_bytes())?;
+                }
+            };
+        } else {
+            ostream.write_all(input.as_bytes())?;
+        }
 
         // decide on separator for next input
         (separator, items_in_line) = if format.items_per_line > 0 {

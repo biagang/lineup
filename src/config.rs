@@ -15,7 +15,9 @@ struct Args {
 
     // output format (todo: macro to obtain these fields from Format)
     #[arg(short = 's', long = "span", default_value_t = default_format().item_span )]
-    /// max characters an item would need; shorter represantions would be padded with 'item-pad'
+    /// max characters an item would need; shorter represantions would be padded with 'pad'
+    /// and anchored according to 'anchor';
+    /// if 0, items will not be padded so 'pad' and 'anchor' are not used
     item_span: usize,
 
     #[arg(short = 'p', long = "pad", default_value_t = default_format().item_pad)]
