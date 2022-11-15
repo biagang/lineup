@@ -157,7 +157,7 @@ checksum = "fc7fcc620a3bff7cdd7a365be3376c97191aeaccc2a603e600951e452615bf89"
 
 [[package]]
 name = "lineup"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "clap",
  "derive_builder",
