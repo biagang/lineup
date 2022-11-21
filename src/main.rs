@@ -1,14 +1,18 @@
 mod config;
-use lineup::write;
+mod util;
 
-fn main() {
+use lineup::write;
+use std::io::Read;
+
+fn main() -> Result<(), std::io::Error> {
     let cfg = config::Config::new();
-    let in_sep = cfg.in_separator();
     let out_fmt = cfg.out_format();
     let ostream = cfg.ostream();
-    let input = cfg.input();
-    let istream = input.split(in_sep.as_str());
-    if let Err(e) = write(istream, ostream, out_fmt) {
-        eprintln!("{e:?}");
-    }
+    let iseparator = cfg.in_separator();
+    let mut istream = cfg.istream();
+    let mut istream_buf = "".to_string();
+    istream.read_to_string(&mut istream_buf)?;
+    let istream = util::to_iter(istream_buf.as_str(), iseparator);
+    write(istream, ostream, out_fmt)?;
+    Ok(())
 }

@@ -1,17 +1,18 @@
 use clap::{Parser, ValueEnum};
-use std::{io::Read, sync::Once};
+use std::fmt::Display;
+use std::sync::Once;
 
 pub struct Config {
-    in_sep: String,
+    in_sep: InputItemSeparator,
     out_fmt: lineup::Format,
 }
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Args {
-    #[arg(short = 'i', long, default_value = ",")]
+    #[arg(short = 'i' , long, value_parser = InputItemSeparator::parse, default_value_t = InputItemSeparator::Explicit(",".to_string()), long_help = InputItemSeparator::LONG_HELP)]
     /// input item separator
-    input_separator: String,
+    input_separator: InputItemSeparator,
 
     // output format (todo: macro to obtain these fields from Format)
     #[arg(short = 's', long = "span", default_value_t = default_format().item_span )]
@@ -39,6 +40,45 @@ struct Args {
     #[arg(short = 'l', long = "line-separator", default_value_t = default_format().line_separator.clone())]
     /// separator string between lines
     line_separator: String,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum InputItemSeparator {
+    /// explicit item separator
+    Explicit(String),
+    /// item fixed byte size, no explicit separator
+    ByteCount(usize),
+}
+
+impl InputItemSeparator {
+    const LONG_HELP: &'static str = r#"Possible values:
+  N:   N is fixed number of bytes per item, no explicit item separator; NOTE N must be > 0 and boundary of a UTF-8 code point for each item
+  SEP: SEP is a string used to separate items; SEP cannot start with a digit"#;
+
+    fn parse(arg: &str) -> Result<Self, String> {
+        if let Ok(char_count) = arg.parse() {
+            if char_count > 0 {
+            Ok(Self::ByteCount(char_count))
+            } else {
+                Err("number of bytes per item must be > 0".to_string())
+            }
+        } else {
+            Ok(Self::Explicit(arg.to_string()))
+        }
+    }
+}
+
+impl Display for InputItemSeparator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Explicit(s) => format!("\"{}\"", s),
+                Self::ByteCount(n) => format!("{}", n),
+            }
+        )
+    }
 }
 
 fn default_format() -> &'static lineup::Format {
@@ -91,7 +131,7 @@ impl Config {
         }
     }
 
-    pub fn in_separator(&self) -> &String {
+    pub fn in_separator(&self) -> &InputItemSeparator {
         &self.in_sep
     }
 
@@ -99,10 +139,8 @@ impl Config {
         self.out_fmt.clone()
     }
 
-    pub fn input(&self) -> String {
-        let mut buf = String::new();
-        std::io::stdin().read_to_string(&mut buf).unwrap();
-        buf
+    pub fn istream(&self) -> impl std::io::Read {
+        std::io::stdin()
     }
 
     pub fn ostream(&self) -> impl std::io::Write {
