@@ -59,13 +59,6 @@ pub struct Format {
     /// Separator between lines
     pub line_separator: String,
 }
-
-impl FormatBuilder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 /// Write input items as per provided format
 ///
 /// # Examples
@@ -150,6 +143,12 @@ where
         };
     }
     Ok(())
+}
+
+impl FormatBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[cfg(test)]
