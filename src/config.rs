@@ -2,6 +2,7 @@ use clap::{Parser, ValueEnum};
 use std::fmt::Display;
 use std::sync::Once;
 
+#[derive(Debug)]
 pub struct Config {
     in_sep: InputItemSeparator,
     out_fmt: lineup::Format,
@@ -10,7 +11,7 @@ pub struct Config {
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Args {
-    #[arg(short = 'i' , long, value_parser = InputItemSeparator::parse, default_value_t = InputItemSeparator::Explicit(",".to_string()), long_help = InputItemSeparator::LONG_HELP)]
+    #[arg(short = 'i' , long, value_parser = InputItemSeparator::parse, default_value = ",", long_help = InputItemSeparator::LONG_HELP)]
     /// input item separator
     input_separator: InputItemSeparator,
 
@@ -33,9 +34,9 @@ struct Args {
     /// number of items per line; if 0 provided put all items on a single line
     items_per_line: usize, // 0 means no line separaion
 
-    #[arg(short = 'e', long = "item-separator", default_value_t = default_format().item_separator.clone())]
+    #[arg(short = 'o', long = "output-separator", default_value_t = default_format().item_separator.clone())]
     /// separator string for items within a line
-    item_separator: String,
+    output_item_separator: String,
 
     #[arg(short = 'l', long = "line-separator", default_value_t = default_format().line_separator.clone())]
     /// separator string between lines
@@ -70,14 +71,7 @@ impl InputItemSeparator {
 
 impl Display for InputItemSeparator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Explicit(s) => format!("\"{}\"", s),
-                Self::ByteCount(n) => format!("{}", n),
-            }
-        )
+        write!(f, "{self:?}")
     }
 }
 
@@ -124,7 +118,7 @@ impl Config {
                 .item_pad(args.item_pad)
                 .item_anchor(args.item_anchor.into())
                 .items_per_line(args.items_per_line)
-                .item_separator(args.item_separator)
+                .item_separator(args.output_item_separator)
                 .line_separator(args.line_separator)
                 .build()
                 .unwrap(),
