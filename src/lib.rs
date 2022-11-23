@@ -59,7 +59,8 @@ pub struct Format {
     /// Separator between lines
     pub line_separator: String,
 }
-/// Write input items as per provided format
+
+/// Write all input items as per provided format
 ///
 /// # Examples
 ///
@@ -91,58 +92,115 @@ where
     In: Iterator<Item = &'i str>,
     Out: std::io::Write,
 {
-    enum Separator {
-        None,
-        Item,
-        Line,
+    let mut writer = ItemWriter::new(format);
+    for item in istream {
+        writer.write(item, &mut ostream)?;
     }
-    let mut items_in_line = 0usize;
-    let mut separator = Separator::None;
-    let item_separator = format.item_separator.as_bytes();
-    let line_separator = format.line_separator.as_bytes();
-    for input in istream {
+    Ok(())
+}
+
+enum ItemSeparator {
+    None,
+    Item,
+    Line,
+}
+
+/// Write input items as per provided format (see [write])
+///
+/// [write]: ItemWriter::write
+pub struct ItemWriter {
+    separator: ItemSeparator,
+    fmt: Format,
+    items_in_line: usize,
+}
+
+impl ItemWriter {
+    /// Create a new instance with provided format
+    pub fn new(fmt: Format) -> Self {
+        Self {
+            separator: ItemSeparator::None,
+            fmt,
+            items_in_line: 0,
+        }
+    }
+
+    /// Write input item as per provided format
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let input = ["😊😊", "👶", "💼💼💼"];
+    /// let format = lineup::FormatBuilder::new()
+    ///     .item_span(4)
+    ///     .item_anchor(lineup::Anchor::Right)
+    ///     .item_separator("🖖".to_string())
+    ///     .line_separator("🔩\n".to_string())
+    ///     .items_per_line(2)
+    ///     .item_pad('👉')
+    ///     .build()
+    ///     .unwrap();
+    /// let expected = "👉👉😊😊🖖👉👉👉👶🔩\n👉💼💼💼";
+    /// let mut output = vec![0u8; 100 ];
+    /// let mut writer = lineup::ItemWriter::new(format);
+    /// let istream = input.into_iter();
+    /// let mut ostream = output.as_mut_slice();
+    /// for item in istream {
+    ///     writer.write(item, &mut ostream).unwrap();
+    /// }
+    /// let eof = output.iter().position(|x| *x == 0u8).unwrap_or(output.len());
+    /// let output = output.split_at(eof).0;
+    /// assert_eq!(String::from_utf8(output.to_vec()).unwrap(), expected);
+    /// ```
+    ///
+    pub fn write<Out: std::io::Write>(
+        &mut self,
+        item: &str,
+        mut writer: Out,
+    ) -> Result<(), std::io::Error> {
         // emit separator from previous input
-        match separator {
-            Separator::None => {}
-            Separator::Item => {
-                ostream.write_all(item_separator)?;
+        let item_separator = self.fmt.item_separator.as_bytes(); //
+        let line_separator = self.fmt.line_separator.as_bytes(); // todo: put these as struct members
+        match self.separator {
+            ItemSeparator::None => {}
+            ItemSeparator::Item => {
+                writer.write_all(item_separator)?;
             }
-            Separator::Line => {
-                ostream.write_all(line_separator)?;
+            ItemSeparator::Line => {
+                writer.write_all(line_separator)?;
             }
         }
 
         // write (padded) input
-        let input_chars = input.chars().count();
-        if input_chars < format.item_span {
-            let pad_count = format.item_span - input_chars;
-            let pad = String::from_iter(std::iter::repeat(format.item_pad).take(pad_count));
-            match format.item_anchor {
+        let input_chars = item.chars().count();
+        if input_chars < self.fmt.item_span {
+            let pad_count = self.fmt.item_span - input_chars;
+            let pad = String::from_iter(std::iter::repeat(self.fmt.item_pad).take(pad_count));
+            match self.fmt.item_anchor {
                 Anchor::Left => {
-                    ostream.write_all(input.as_bytes())?;
-                    ostream.write_all(pad.as_bytes())?;
+                    writer.write_all(item.as_bytes())?;
+                    writer.write_all(pad.as_bytes())?;
                 }
                 Anchor::Right => {
-                    ostream.write_all(pad.as_bytes())?;
-                    ostream.write_all(input.as_bytes())?;
+                    writer.write_all(pad.as_bytes())?;
+                    writer.write_all(item.as_bytes())?;
                 }
             };
         } else {
-            ostream.write_all(input.as_bytes())?;
+            writer.write_all(item.as_bytes())?;
         }
 
         // decide on separator for next input
-        (separator, items_in_line) = if format.items_per_line > 0 {
-            if items_in_line + 1 < format.items_per_line {
-                (Separator::Item, items_in_line + 1)
+        (self.separator, self.items_in_line) = if self.fmt.items_per_line > 0 {
+            if self.items_in_line + 1 < self.fmt.items_per_line {
+                (ItemSeparator::Item, self.items_in_line + 1)
             } else {
-                (Separator::Line, 0)
+                (ItemSeparator::Line, 0)
             }
         } else {
-            (Separator::Item, 0)
+            (ItemSeparator::Item, 0)
         };
+        Ok(())
     }
-    Ok(())
 }
 
 impl FormatBuilder {
