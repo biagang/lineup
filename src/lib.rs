@@ -155,7 +155,7 @@ impl ItemWriter {
     pub fn write<Out: std::io::Write>(
         &mut self,
         item: &str,
-        mut writer: Out,
+        writer: &mut Out,
     ) -> Result<(), std::io::Error> {
         // emit separator from previous input
         let item_separator = self.fmt.item_separator.as_bytes(); //
