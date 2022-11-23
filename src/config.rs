@@ -59,7 +59,7 @@ impl InputItemSeparator {
     fn parse(arg: &str) -> Result<Self, String> {
         if let Ok(char_count) = arg.parse() {
             if char_count > 0 {
-            Ok(Self::ByteCount(char_count))
+                Ok(Self::ByteCount(char_count))
             } else {
                 Err("number of bytes per item must be > 0".to_string())
             }

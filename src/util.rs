@@ -35,10 +35,10 @@ mod tests {
         let istream = "1;2a;3bbb;";
         let sep = config::InputItemSeparator::Explicit(";".to_string());
         let mut it = to_iter(istream, &sep);
-                assert_eq!(Some("1"), it.next());
-                assert_eq!(Some("2a"), it.next());
-                assert_eq!(Some("3bbb"), it.next());
-                assert_eq!(None, it.next());
+        assert_eq!(Some("1"), it.next());
+        assert_eq!(Some("2a"), it.next());
+        assert_eq!(Some("3bbb"), it.next());
+        assert_eq!(None, it.next());
     }
 
     #[test]
@@ -46,11 +46,11 @@ mod tests {
         let istream = "a1b2c3d4";
         let sep = config::InputItemSeparator::ByteCount(2);
         let mut it = to_iter(istream, &sep);
-                assert_eq!(Some("a1"), it.next());
-                assert_eq!(Some("b2"), it.next());
-                assert_eq!(Some("c3"), it.next());
-                assert_eq!(Some("d4"), it.next());
-                assert_eq!(None, it.next());
+        assert_eq!(Some("a1"), it.next());
+        assert_eq!(Some("b2"), it.next());
+        assert_eq!(Some("c3"), it.next());
+        assert_eq!(Some("d4"), it.next());
+        assert_eq!(None, it.next());
     }
 
     #[test]
