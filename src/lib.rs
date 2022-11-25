@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[macro_use]
 extern crate derive_builder;
 
@@ -19,7 +21,7 @@ pub enum Anchor {
 /// # Examples
 ///
 /// ```
-/// let format = lineup::FormatBuilder::new()
+/// let format = lineup::OutFormatBuilder::new()
 ///     .item_span(4)
 ///     .item_anchor(lineup::Anchor::Right)
 ///     .item_separator("|".to_string())
@@ -30,7 +32,7 @@ pub enum Anchor {
 ///     .unwrap();
 /// ```
 ///
-pub struct Format {
+pub struct OutFormat {
     #[builder(default = "0")]
     /// Max characters an item would need; shorter represantions would be padded with [item_pad]
     /// and anchored according to [item_anchor];
@@ -60,13 +62,40 @@ pub struct Format {
     pub line_separator: String,
 }
 
+#[derive(Clone, Debug, Builder)]
+#[builder(derive(Debug))]
+pub struct InFormat {
+    #[builder(default = "InputItemSeparator::default()")]
+    pub item_separator: InputItemSeparator,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum InputItemSeparator {
+    /// explicit item separator
+    Explicit(String),
+    /// item fixed byte size, no explicit separator
+    ByteCount(usize),
+}
+
+impl Default for InputItemSeparator {
+    fn default() -> Self {
+        Self::Explicit(",".to_string())
+    }
+}
+
+impl Display for InputItemSeparator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 /// Write all input items as per provided format
 ///
 /// # Examples
 ///
 /// ```
 /// let input = ["😊😊", "👶", "💼💼💼"];
-/// let format = lineup::FormatBuilder::new()
+/// let format = lineup::OutFormatBuilder::new()
 ///     .item_span(4)
 ///     .item_anchor(lineup::Anchor::Right)
 ///     .item_separator("🖖".to_string())
@@ -86,7 +115,7 @@ pub struct Format {
 pub fn write<'i, In, Out>(
     istream: In,
     mut ostream: Out,
-    format: Format,
+    format: OutFormat,
 ) -> Result<(), std::io::Error>
 where
     In: Iterator<Item = &'i str>,
@@ -110,13 +139,13 @@ enum ItemSeparator {
 /// [write]: ItemWriter::write
 pub struct ItemWriter {
     separator: ItemSeparator,
-    fmt: Format,
+    fmt: OutFormat,
     items_in_line: usize,
 }
 
 impl ItemWriter {
     /// Create a new instance with provided format
-    pub fn new(fmt: Format) -> Self {
+    pub fn new(fmt: OutFormat) -> Self {
         Self {
             separator: ItemSeparator::None,
             fmt,
@@ -130,7 +159,7 @@ impl ItemWriter {
     ///
     /// ```
     /// let input = ["😊😊", "👶", "💼💼💼"];
-    /// let format = lineup::FormatBuilder::new()
+    /// let format = lineup::OutFormatBuilder::new()
     ///     .item_span(4)
     ///     .item_anchor(lineup::Anchor::Right)
     ///     .item_separator("🖖".to_string())
@@ -203,7 +232,7 @@ impl ItemWriter {
     }
 }
 
-impl FormatBuilder {
+impl OutFormatBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -219,7 +248,7 @@ mod tests {
         let expected = "_001|__01;___1*";
         let mut output = [0u8; 15];
         output[14] = b'*';
-        let format = FormatBuilder::new()
+        let format = OutFormatBuilder::new()
             .item_span(4)
             .item_anchor(Anchor::Right)
             .item_separator("|".to_string())
@@ -235,7 +264,7 @@ mod tests {
     #[test]
     fn example() {
         let input = ["😊😊", "👶", "💼💼💼"];
-        let format = FormatBuilder::new()
+        let format = OutFormatBuilder::new()
             .item_span(4)
             .item_anchor(Anchor::Right)
             .item_separator("🖖".to_string())
