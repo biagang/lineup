@@ -1,8 +1,8 @@
 [package]
 name = "lineup"
-version = "0.10.1"
+version = "0.2.0"
 edition = "2021"
-description = "format a collection of strings"
+description = "read/write collection of formatted UTF-8 string items"
 license = "GPL-3.0-or-later"
 homepage = "https://github.com/biagang/lineup"
 repository = "https://github.com/biagang/lineup"
@@ -12,4 +12,5 @@ categories = ["command-line-utilities", "encoding", "value-formatting", "visuali
 
 [dependencies]
 clap = { version = "4.0.18", features = ["derive", "cargo"] }
+derive-new = "0.5.9"
 derive_builder = "0.11.2"
