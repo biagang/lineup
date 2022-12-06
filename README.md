@@ -1,23 +1,16 @@
 # lineup
 
-> format a collection of strings
+> read/write collection of formatted UTF-8 string items
 
 ## About
 
-lineup is a Rust library and cross-platform command-line tool for formatting a list of UTF-8 strings according to specified separator, padding, anchor, etc.
+lineup is a Rust library and cross-platform command-line tool for reading and writinf a list of UTF-8 strings according to specified input and output formats (separator, padding, anchor, etc.)
 
-
-    $ echo -n '1234' | lineup --input-separator 1 --output-separator ','; echo
-    1,2,3,4
-    $ echo -n 'hey,hello,hi' | lineup --span 5 --pad . --anchor right  --line-items 1 --line-separator '
-    '; echo
-    ..hey
-    hello
-    ...hi
-    $ echo -n 'hey,hello,hi' | lineup --span 4 --pad - --anchor left --output-separator '|'; echo
-    hey-|hello|hi--
-    $
-
+    $ echo -n 'hi,here,hey' | lineup --in-separator=',' --out-span=4 --out-pad='_' --out-anchor=right --out-line-n=1 --out-line-separator='
+    > '; echo
+    __hi
+    here
+    _hey
 
 For more info check
 ```
@@ -43,50 +36,61 @@ cargo install -f lineup
 ```
 cargo build --release
 ```
+
 ## Usage
 
-    format a collection of strings
+    read/write collection of formatted UTF-8 string items
     
     Usage: lineup [OPTIONS]
     
     Options:
-      -i, --input-separator <INPUT_SEPARATOR>
-              Possible values:
+          --in-separator <IN_SEPARATOR>
+              IN FORMAT: input item separator, possible values:
                 N:   N is fixed number of bytes per item, no explicit item separator; NOTE N must be > 0 and boundary of a UTF-8 code point for each item
                 SEP: SEP is a string used to separate items; SEP cannot start with a digit
               
-              [default: ","]
+              [default: ,]
     
-      -s, --span <ITEM_SPAN>
-              max characters an item would need; shorter represantions would be padded with 'pad' and anchored according to 'anchor'; if 0, items will not be padded so 'pad' and 'anchor' are not used
+          --in-line-n <IN_LINE_N>
+              IN format, line: number of items per line; if 0 provided all items are on a single line
               
               [default: 0]
     
-      -p, --pad <ITEM_PAD>
-              pad character (see span)
+          --in-line-separator <IN_LINE_SEPARATOR>
+              IN format, line: separator string between lines
+              
+              [default: ]
+    
+          --out-span <OUT_SPAN>
+              OUT format, span: max characters an item would need; shorter representations would be padded with 'pad' and anchored according to 'anchor'; if 0, items will not be padded so 'pad' and 'anchor' are not used
+              
+              [default: 0]
+    
+          --out-pad <OUT_PAD>
+              OUT format, span: pad character (see 'span')
               
               [default: " "]
     
-      -a, --anchor <ITEM_ANCHOR>
-              anchor items to the left or right when padding is needed
+          --out-anchor <OUT_ANCHOR>
+              OUT format, span: anchor items to the left or right when padding is needed (see 'span')
               
               [default: left]
               [possible values: right, left]
     
-      -n, --line-items <ITEMS_PER_LINE>
-              number of items per line; if 0 provided put all items on a single line
-              
-              [default: 0]
-    
-      -o, --output-separator <OUTPUT_ITEM_SEPARATOR>
-              separator string for items within a line
+          --out-separator <OUT_SEPARATOR>
+              OUT format: separator string for items within a line
               
               [default: " "]
     
-      -l, --line-separator <LINE_SEPARATOR>
-              separator string between lines
+          --out-line-n <OUT_LINE_N>
+              OUT format, line: number of items per line; if 0 provided put all items on a single line
               
-              [default: "\n"]
+              [default: 0]
+    
+          --out-line-separator <OUT_LINE_SEPARATOR>
+              OUT format, line: separator string between lines
+              
+              [default: ]
     
       -h, --help
               Print help information (use `-h` for a summary)
@@ -94,6 +98,27 @@ cargo build --release
       -V, --version
               Print version information
 
+### Input format arguments
+
+These arguments specify how input items are arranged in the input stream:
+
+- item separator:```--in-separator```
+- line separator:
+    - number of items per line: ```--in-line-n```, 0 disables line separation
+    - line separator: ```in-line-separator```
+
+### Output format arguments
+
+These arguments specify how items will be arranged on the output stream:
+
+- span:
+    - span size: ```--out-span```, 0 disables span
+    - pad character: ```--out-pad```
+    - anchor: ```--out-anchor```
+- item separator:```--out-separator```
+- line separator:
+    - number of items per line: ```--out-line-n```, 0 disables line separation
+    - line separator: ```out-line-separator```
 
 ## License
 

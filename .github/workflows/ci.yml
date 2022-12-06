@@ -9,10 +9,11 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
-      - name: install stable toolchain
+      - name: install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
+          override: true
       - name: test
         uses: actions-rs/cargo@v1
         with:

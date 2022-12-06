@@ -1,62 +1,60 @@
 use clap::{Parser, ValueEnum};
-use std::fmt::Display;
-use std::sync::Once;
+use lineup::{ItemSpan, LineSeparator};
 
 #[derive(Debug)]
 pub struct Config {
-    in_sep: InputItemSeparator,
-    out_fmt: lineup::Format,
+    in_fmt: lineup::InFormat,
+    out_fmt: lineup::OutFormat,
 }
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Args {
-    #[arg(short = 'i' , long, value_parser = InputItemSeparator::parse, default_value = ",", long_help = InputItemSeparator::LONG_HELP)]
-    /// input item separator
-    input_separator: InputItemSeparator,
+    #[arg(long, value_parser = InputItemSeparator::parse, default_value = ",", long_help = InputItemSeparator::LONG_HELP)]
+    /// IN format: input item separator
+    in_separator: InputItemSeparator,
 
-    // output format (todo: macro to obtain these fields from Format)
-    #[arg(short = 's', long = "span", default_value_t = default_format().item_span )]
-    /// max characters an item would need; shorter represantions would be padded with 'pad'
+    #[arg(long, default_value = "0")]
+    /// IN format, line: number of items per line; if 0 provided all items are on a single line
+    in_line_n: usize, // 0 means no line separaion
+
+    #[arg(long, default_value = "")]
+    /// IN format, line: separator string between lines
+    in_line_separator: String,
+
+    #[arg(long, default_value = "0")]
+    /// OUT format, span: max characters an item would need; shorter representations would be padded with 'pad'
     /// and anchored according to 'anchor';
     /// if 0, items will not be padded so 'pad' and 'anchor' are not used
-    item_span: usize,
+    out_span: usize,
 
-    #[arg(short = 'p', long = "pad", default_value_t = default_format().item_pad)]
-    /// pad character (see span)
-    item_pad: char,
+    #[arg(long, default_value = " ")]
+    /// OUT format, span: pad character (see 'span')
+    out_pad: char,
 
-    #[arg(short = 'a', long = "anchor", value_enum, default_value_t = default_format().item_anchor.into())]
-    /// anchor items to the left or right when padding is needed
-    item_anchor: Anchor,
+    #[arg(long, value_enum, default_value = "left")]
+    /// OUT format, span: anchor items to the left or right when padding is needed (see 'span')
+    out_anchor: Anchor,
 
-    #[arg(short = 'n', long = "line-items", default_value_t = default_format().items_per_line)]
-    /// number of items per line; if 0 provided put all items on a single line
-    items_per_line: usize, // 0 means no line separaion
+    #[arg(long, default_value = " ")]
+    /// OUT format: separator string for items within a line
+    out_separator: String,
 
-    #[arg(short = 'o', long = "output-separator", default_value_t = default_format().item_separator.clone())]
-    /// separator string for items within a line
-    output_item_separator: String,
+    #[arg(long, default_value = "0")]
+    /// OUT format, line: number of items per line; if 0 provided put all items on a single line
+    out_line_n: usize, // 0 means no line separaion
 
-    #[arg(short = 'l', long = "line-separator", default_value_t = default_format().line_separator.clone())]
-    /// separator string between lines
-    line_separator: String,
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum InputItemSeparator {
-    /// explicit item separator
-    Explicit(String),
-    /// item fixed byte size, no explicit separator
-    ByteCount(usize),
+    #[arg(long, default_value = "")]
+    /// OUT format, line: separator string between lines
+    out_line_separator: String,
 }
 
 impl InputItemSeparator {
-    const LONG_HELP: &'static str = r#"Possible values:
+    pub const LONG_HELP: &'static str = r#"IN FORMAT: input item separator, possible values:
   N:   N is fixed number of bytes per item, no explicit item separator; NOTE N must be > 0 and boundary of a UTF-8 code point for each item
   SEP: SEP is a string used to separate items; SEP cannot start with a digit"#;
 
-    fn parse(arg: &str) -> Result<Self, String> {
+    pub fn parse(arg: &str) -> Result<Self, String> {
         if let Ok(char_count) = arg.parse() {
             if char_count > 0 {
                 Ok(Self::ByteCount(char_count))
@@ -69,19 +67,13 @@ impl InputItemSeparator {
     }
 }
 
-impl Display for InputItemSeparator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+impl From<InputItemSeparator> for lineup::ItemSeparator {
+    fn from(s: InputItemSeparator) -> Self {
+        match s {
+            InputItemSeparator::Explicit(e) => lineup::ItemSeparator::Explicit(e),
+            InputItemSeparator::ByteCount(b) => lineup::ItemSeparator::ByteCount(b),
+        }
     }
-}
-
-fn default_format() -> &'static lineup::Format {
-    static mut FMT: Option<lineup::Format> = None;
-    static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
-        FMT = Some(lineup::FormatBuilder::new().build().unwrap());
-    });
-    unsafe { FMT.as_ref().unwrap() }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum)]
@@ -108,28 +100,45 @@ impl From<Anchor> for lineup::Anchor {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum InputItemSeparator {
+    /// explicit item separator
+    Explicit(String),
+    /// item fixed byte size, no explicit separator
+    ByteCount(usize),
+}
+
 impl Config {
     pub fn new() -> Self {
         let args = Args::parse();
         Self {
-            in_sep: args.input_separator,
-            out_fmt: lineup::FormatBuilder::default()
-                .item_span(args.item_span)
-                .item_pad(args.item_pad)
-                .item_anchor(args.item_anchor.into())
-                .items_per_line(args.items_per_line)
-                .item_separator(args.output_item_separator)
-                .line_separator(args.line_separator)
+            in_fmt: lineup::InFormatBuilder::default()
+                .item_separator(args.in_separator.into())
+                .line_separator(Self::line_separator(args.in_line_n, args.in_line_separator))
+                .build()
+                .unwrap(),
+            out_fmt: lineup::OutFormatBuilder::default()
+                .span(if args.out_span == 0 {
+                    None
+                } else {
+                    Some(ItemSpan::new(
+                        args.out_span,
+                        args.out_pad,
+                        args.out_anchor.into(),
+                    ))
+                })
+                .line_separator(Self::line_separator(args.out_line_n, args.out_line_separator))
+                .item_separator(args.out_separator)
                 .build()
                 .unwrap(),
         }
     }
 
-    pub fn in_separator(&self) -> &InputItemSeparator {
-        &self.in_sep
+    pub fn in_fmt(&self) -> &lineup::InFormat {
+        &self.in_fmt
     }
 
-    pub fn out_format(&self) -> lineup::Format {
+    pub fn out_format(&self) -> lineup::OutFormat {
         self.out_fmt.clone()
     }
 
@@ -139,5 +148,13 @@ impl Config {
 
     pub fn ostream(&self) -> impl std::io::Write {
         std::io::stdout()
+    }
+
+    fn line_separator(n: usize, sep: String) -> Option<LineSeparator> {
+        if n > 0 {
+            Some(LineSeparator::new(n, sep))
+        } else {
+            None
+        }
     }
 }
