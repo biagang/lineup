@@ -1,4 +1,5 @@
 #![feature(let_chains)]
+#![feature(type_alias_impl_trait)]
 
 use derive_new::new as New;
 use std::fmt::Display;
@@ -141,6 +142,12 @@ where
     Ok(())
 }
 
+/// Opaque type definition around [ItemReader], as returned from [read]
+///
+/// [ItemReader]: crate::ItemReader
+/// [read]: crate::read
+pub type ItemIterator<'i> = impl Iterator<Item = &'i str> + std::fmt::Debug;
+
 /// Get an iterator over &str items
 ///
 /// # Examples
@@ -175,7 +182,7 @@ where
 /// assert_eq!(None, it.next());
 /// ```
 ///
-pub fn read(input: &str, format: InFormat) -> impl Iterator<Item = &str> {
+pub fn read(input: &str, format: InFormat) -> ItemIterator {
     ItemReader::new(input, format)
 }
 
@@ -197,7 +204,7 @@ pub struct ItemWriter {
     items_in_line: usize,
 }
 
-#[derive(New)]
+#[derive(New, Debug)]
 pub struct ItemReader<'i> {
     input: &'i str,
     fmt: InFormat,
