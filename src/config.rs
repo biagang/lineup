@@ -127,7 +127,10 @@ impl Config {
                         args.out_anchor.into(),
                     ))
                 })
-                .line_separator(Self::line_separator(args.out_line_n, args.out_line_separator))
+                .line_separator(Self::line_separator(
+                    args.out_line_n,
+                    args.out_line_separator,
+                ))
                 .item_separator(args.out_separator)
                 .build()
                 .unwrap(),
