@@ -4,7 +4,7 @@
 
 ## About
 
-lineup is a Rust library and cross-platform command-line tool for reading and writinf a list of UTF-8 strings according to specified input and output formats (separator, padding, anchor, etc.)
+lineup is a Rust library and cross-platform command-line tool for reading and writing a list of UTF-8 strings according to specified input and output formats (separator, padding, anchor, etc.)
 
     $ echo -n 'hi,here,hey' | lineup --in-separator=',' --out-span=4 --out-pad='_' --out-anchor=right --out-line-n=1 --out-line-separator='
     > '; echo
